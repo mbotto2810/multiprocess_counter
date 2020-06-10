@@ -1,32 +1,37 @@
 #include <stdio.h>
-#include <stdlib.h> /* exit() */
-#include <sys/types.h> /* define pid_t */
-#include <unistd.h> /* fork() */
+#include <stdlib.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <sys/wait.h>
 #include <sys/mman.h>
 
+#define max_filhos 3
+#define max_num 100
+
 int primo(int n) {
 	int i, flag = 1;
+    if ( n==0 || n==1 ) {
+        return 0;
+    }
 
 	for (i = 2; i <= n / 2; ++i) {
 	if (n % i == 0) {
 	    flag = 0;
 	    break;
-	}
+	    }
 	}
 	return flag;
 }
 
 int main() {
-	int vet[100];
-	int k, n , i=0;
+	int vet[max_num];
+	int n,i=0;
 	char c;
-	pid_t pid[3];
+	pid_t filhos[max_filhos];
 
 	int protection = PROT_READ | PROT_WRITE;
 	int visibility = MAP_SHARED | MAP_ANON;
 
-	//no b armazeno primos
 	int *b;
 	b = (int*) mmap(NULL, sizeof(int), protection, visibility, 0, 0);
 	if ((long int)b==-1) printf("Erro de alocacao!\n");
@@ -38,43 +43,66 @@ int main() {
 		i++;
 	} while (c = getchar() != '\n');
 
-	switch (i) {
-		case 1:
-			*b += primo(vet[0]);
-			break;
-		case 2:
-			*b += primo(vet[0]);
-			pid[0] = fork();
-			//Chamada de fork processo filho
-			if (pid[0]==0) {
-				*b += primo(vet[1]);
-				printf("Estou no filho\n");
-				exit(0);
-			}
-			break;
-		case 3:
-			*b += primo(vet[0]);
-			pid[0] = fork();
-			pid[1] = fork();
-			//Chamada de fork processo filho
-			if (pid[0]==0) {
-				*b += primo(vet[1]);
-				printf("Estou no filho\n");
-				exit(0);
-			}
-			if (pid[1]==0) {
-				*b += primo(vet[2]);
-				printf("Estou no filho 2\n");
-				exit(0);
-			}
-			break;
-		default:
-			printf("s");
-			break;
-	}
+    for (int y=i ; y<max_num ; y++){
+        vet[y] = 0;
+    }
 
-	for (int k=0; k<2; k++)
-		waitpid(pid[k], NULL, 0);
+
+
+
+    filhos[0] = fork();
+
+    if (filhos[0] == 0) {
+        /* Child A code */
+         for (int k=0 ; k < 100 ; k++) {
+                if ( k % 4 == 1) {
+                     *b += primo(vet[k]);
+                       // printf("Estou no filho 1 com indice %d e valor %d\n",k,vet[k]);
+                    }
+            }
+         exit(0);
+    } else {
+        filhos[1] = fork();
+
+        if (filhos[1] == 0) {
+            /* Child B code */
+         for (int k=0 ; k < 100 ; k++) {
+                if ( k % 4 == 2) {
+                    *b += primo(vet[k]);
+                       // printf("Estou no filho 1 com indice %d e valor %d\n",k,vet[k]);
+                    }
+            }
+         exit(0);
+        } else {
+           filhos[2] = fork();
+
+            if (filhos[2] == 0 ) {
+            /* Child C code */
+             for (int k=0 ; k < 100 ; k++) {
+                if ( k % 4 == 3) {
+                    *b += primo(vet[k]);
+                       // printf("Estou no filho 1 com indice %d e valor %d\n",k,vet[k]);
+                    }
+             }
+         exit(0);
+
+            } else {
+            /* Parent code */
+            for (int k=0 ; k<100 ;k++ ){
+                if ( k % 4 == 0) {
+                        //printf("Estou no pai com indice %d e valor %d\n",k,vet[k]);
+                        *b += primo(vet[k]);
+                    }
+            }
+        }
+    }
+}
+
+
+	for (int x=0; x<max_filhos; x++) {
+		waitpid(filhos[x], NULL, 0);
+    }
+
 	printf("%d\n",*b);
 	return 0;
 }
